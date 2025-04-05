@@ -1,6 +1,7 @@
 import pygame
 import sys
 import math
+import heapq
 
 # Inisialisasi Pygame
 pygame.init()
@@ -16,7 +17,7 @@ map_rect = map_image.get_rect()
 
 # Ukuran layar sesuai gambar peta, tambahkan ruang untuk tombol
 screen = pygame.display.set_mode((map_rect.width, map_rect.height + 50))  # Tambah 50 piksel untuk tombol
-pygame.display.set_caption("Rute Terbaik")
+pygame.display.set_caption("Rute Terbaik dengan A*")
 
 # Koordinat rumah (manual, dalam piksel)
 houses = {
@@ -42,37 +43,44 @@ graph = {
     "D": {"A": 112, "C": 254},
 }
 
-# Fungsi untuk menghitung jarak Euclidean antara dua titik
+# Fungsi untuk menghitung jarak Euclidean antara dua titik (digunakan sebagai heuristik)
 def calculate_distance(pos1, pos2):
     return math.sqrt((pos2[0] - pos1[0]) ** 2 + (pos2[1] - pos1[1]) ** 2)
 
-# Algoritma Dijkstra untuk mencari rute terpendek
-def dijkstra(graph, start, end):
-    distances = {node: float('infinity') for node in graph}
-    distances[start] = 0
-    previous = {node: None for node in graph}
-    unvisited = list(graph.keys())
+# Algoritma A* untuk mencari rute terpendek
+def a_star(graph, start, end, intersections):
+    # Priority queue untuk menyimpan simpul yang akan dieksplorasi
+    open_set = [(0, start)]  # (f_score, node)
+    came_from = {node: None for node in graph}
+    g_score = {node: float('infinity') for node in graph}  # Biaya aktual dari start ke node
+    g_score[start] = 0
+    f_score = {node: float('infinity') for node in graph}  # f_score = g_score + h_score
+    f_score[start] = calculate_distance(intersections[start], intersections[end])
 
-    while unvisited:
-        current = min(unvisited, key=lambda node: distances[node])
+    while open_set:
+        current_f, current = heapq.heappop(open_set)
+
         if current == end:
-            break
-        unvisited.remove(current)
+            # Rekonstruksi jalur
+            path = []
+            while current is not None:
+                path.append(current)
+                current = came_from[current]
+            path.reverse()
+            return path
 
         for neighbor, weight in graph[current].items():
-            distance = distances[current] + weight
-            if distance < distances[neighbor]:
-                distances[neighbor] = distance
-                previous[neighbor] = current
+            tentative_g_score = g_score[current] + weight
 
-    # Rekonstruksi jalur
-    path = []
-    current = end
-    while current is not None:
-        path.append(current)
-        current = previous[current]
-    path.reverse()
-    return path
+            if tentative_g_score < g_score[neighbor]:
+                came_from[neighbor] = current
+                g_score[neighbor] = tentative_g_score
+                # Heuristik: jarak Euclidean dari neighbor ke end
+                h_score = calculate_distance(intersections[neighbor], intersections[end])
+                f_score[neighbor] = g_score[neighbor] + h_score
+                heapq.heappush(open_set, (f_score[neighbor], neighbor))
+
+    return []  # Jika tidak ada jalur
 
 # Variabel untuk menyimpan titik start, end, dan path
 start_point = None
@@ -123,9 +131,9 @@ while running:
                             # Tentukan simpul terdekat dari start_point dan end_point
                             start_node = min(intersections, key=lambda node: calculate_distance(houses[start_point], intersections[node]))
                             end_node = min(intersections, key=lambda node: calculate_distance(houses[end_point], intersections[node]))
-                            # Hitung rute
-                            path = dijkstra(graph, start_node, end_node)
-                            print(f"Rute terbaik: {path}")
+                            # Hitung rute menggunakan A*
+                            path = a_star(graph, start_node, end_node, intersections)
+                            print(f"Rute terbaik (A*): {path}")
         elif event.type == pygame.KEYDOWN:
             if event.key == pygame.K_r:  # Tekan 'R' untuk reset
                 reset()
@@ -146,6 +154,14 @@ while running:
         font = pygame.font.Font(None, 24)
         text = font.render(house_name, True, (0, 0, 0))
         screen.blit(text, (house_pos[0] + 15, house_pos[1] - 10))
+
+    # Gambar titik persimpangan (hanya untuk visualisasi, tidak dapat diklik)
+    for intersection_name, intersection_pos in intersections.items():
+        pygame.draw.circle(screen, (0, 0, 139), intersection_pos, 5)  # Lingkaran biru tua untuk persimpangan
+        # Tambahkan label nama persimpangan
+        font = pygame.font.Font(None, 24)
+        text = font.render(intersection_name, True, (0, 0, 0))
+        screen.blit(text, (intersection_pos[0] + 15, intersection_pos[1] - 10))
 
     # Gambar titik start dan end jika sudah dipilih
     if start_point:
