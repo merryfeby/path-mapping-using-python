@@ -155,52 +155,76 @@ while running:
             if reset_button_rect.collidepoint(mouse_pos):
                 reset()
             else:
+                # Cek klik pada rumah atau persimpangan
+                selected_point = None
+                selected_type = None
+
+                # Cek rumah
                 for house_name, house_pos in houses.items():
                     if calculate_distance(mouse_pos, house_pos) < 20:
-                        if start_point is None:
-                            start_point = house_name
-                            print(f"Start: {start_point}")
-                            best_path = None
-                        elif end_point is None and house_name != start_point:
-                            end_point = house_name
-                            print(f"End: {end_point}")
-                            # node yang ditentukan untuk start dan end
-                            start_node = house_to_intersection[start_point]
-                            end_node = house_to_intersection[end_point]
-                            print(f"Start node: {start_node}")
-                            print(f"End node: {end_node}")
+                        selected_point = house_name
+                        selected_type = "house"
+                        break
+                # Cek persimpangan jika belum memilih rumah
+                if not selected_point:
+                    for intersection_name, intersection_pos in intersections.items():
+                        if calculate_distance(mouse_pos, intersection_pos) < 20:
+                            selected_point = intersection_name
+                            selected_type = "intersection"
+                            break
 
-                            # Reset best path dan cost
-                            best_total_cost = float('infinity')
-                            best_path = None
-                            best_start_node = None
-                            best_end_node = None
+                if selected_point:
+                    if start_point is None:
+                        start_point = selected_point
+                        start_type = selected_type
+                        print(f"Start: {start_point} ({start_type})")
+                        best_path = None
+                    elif end_point is None and selected_point != start_point:
+                        end_point = selected_point
+                        end_type = selected_type
+                        print(f"End: {end_point} ({end_type})")
 
-                            # Hitung rute menggunakan A*
-                            path, path_cost = a_star(graph, start_node, end_node, intersections)
-                            if path:  # Jika ada jalur
-                                # Tambahkan cost dari gedung ke node start dan dari node end ke rumah
-                                start_to_node_cost = calculate_distance(houses[start_point], intersections[start_node]) / 10  # Skala biaya
-                                node_to_end_cost = calculate_distance(intersections[end_node], houses[end_point]) / 10  # Skala biaya
-                                total_cost = path_cost + start_to_node_cost + node_to_end_cost
-                                print(f"Path from {start_node} to {end_node}: {path}, Total cost: {total_cost}")
+                        # Tentukan node untuk start dan end
+                        start_node = house_to_intersection[start_point] if start_type == "house" else start_point
+                        end_node = house_to_intersection[end_point] if end_type == "house" else end_point
+                        print(f"Start node: {start_node}")
+                        print(f"End node: {end_node}")
 
-                                # Simpan jalur terbaik
-                                best_total_cost = total_cost
-                                best_path = path
-                                best_start_node = start_node
-                                best_end_node = end_node
+                        # Reset best path dan cost
+                        best_total_cost = float('infinity')
+                        best_path = None
+                        best_start_node = None
+                        best_end_node = None
 
-                            if best_path:
-                                print(f"Rute terbaik (A*): {best_path}")
-                                print(f"Total cost: {best_total_cost}")
-                            else:
-                                print("Tidak ada rute yang ditemukan.")
+                        # Hitung rute menggunakan A*
+                        path, path_cost = a_star(graph, start_node, end_node, intersections)
+                        if path:  # Jika ada jalur
+                            total_cost = path_cost
+                            # Tambahkan cost Euclidean jika start/end adalah rumah
+                            if start_type == "house":
+                                start_to_node_cost = calculate_distance(houses[start_point], intersections[start_node]) / 10
+                                total_cost += start_to_node_cost
+                            if end_type == "house":
+                                node_to_end_cost = calculate_distance(intersections[end_node], houses[end_point]) / 10
+                                total_cost += node_to_end_cost
+                            print(f"Path from {start_node} to {end_node}: {path}, Total cost: {total_cost}")
+
+                            # Simpan jalur terbaik
+                            best_total_cost = total_cost
+                            best_path = path
+                            best_start_node = start_node
+                            best_end_node = end_node
+
+                        if best_path:
+                            print(f"Rute terbaik (A*): {best_path}")
+                            print(f"Total cost: {best_total_cost}")
+                        else:
+                            print("Tidak ada rute yang ditemukan.")
         elif event.type == pygame.KEYDOWN:
             if event.key == pygame.K_r:
                 reset()
 
-    # clear screen
+    # Clear screen
     screen.fill((255, 255, 255))
 
     # Gambar peta
@@ -225,9 +249,11 @@ while running:
 
     # Gambar titik start dan end jika sudah dipilih
     if start_point:
-        pygame.draw.circle(screen, (0, 255, 0), houses[start_point], 7, 2)
+        pos = houses[start_point] if start_point in houses else intersections[start_point]
+        pygame.draw.circle(screen, (0, 255, 0), pos, 7, 2)
     if end_point:
-        pygame.draw.circle(screen, (0, 0, 255), houses[end_point], 7, 2)
+        pos = houses[end_point] if end_point in houses else intersections[end_point]
+        pygame.draw.circle(screen, (0, 0, 255), pos, 7, 2)
 
     # Gambar rute terbaik jika sudah dihitung
     if best_path and len(best_path) > 1:
@@ -235,11 +261,11 @@ while running:
             start_pos = intersections[best_path[i]]
             end_pos = intersections[best_path[i + 1]]
             pygame.draw.line(screen, (255, 255, 0), start_pos, end_pos, 3)
-            
-        # Gambar garis dari rumah ke simpul terdekat
-        if start_point and best_start_node:
+        
+        # Gambar garis dari rumah ke simpul terdekat jika start/end adalah rumah
+        if start_point and best_start_node and start_point in houses:
             pygame.draw.line(screen, (255, 255, 0), houses[start_point], intersections[best_start_node], 3)
-        if end_point and best_end_node:
+        if end_point and best_end_node and end_point in houses:
             pygame.draw.line(screen, (255, 255, 0), houses[end_point], intersections[best_end_node], 3)
 
     pygame.display.flip()
