@@ -5,6 +5,7 @@ import heapq
 
 pygame.init()
 
+# Menampilkan gambar peta
 try:
     map_image = pygame.image.load("map2.jpg")
 except pygame.error as e:
@@ -13,8 +14,10 @@ except pygame.error as e:
 
 map_rect = map_image.get_rect()
 
+# Size screen map
 screen = pygame.display.set_mode((map_rect.width, map_rect.height + 50))
 
+# Koordinat rumah 
 houses = {
     "Dental": (200, 100),  
     "Bakmi": (210, 750), 
@@ -22,6 +25,7 @@ houses = {
     "Nutrihub": (430, 760), 
 }
 
+# Koordinat persimpangan 
 intersections = {
     "A": (40, 30),  
     "B": (690, 30),   
@@ -45,6 +49,7 @@ intersections = {
     "V": (430, 780),  
 }
 
+# Graf jalan dengan path cost
 graph = {
     "A": {"B": 60, "C": 10},
     "B": {"A": 60, "K": 45},
@@ -75,9 +80,11 @@ house_to_intersection = {
     "Nutrihub": "V", 
 }
 
+# Function untuk menghitung jarak Euclidean antara dua titik (digunakan sebagai heuristik)
 def calculate_distance(pos1, pos2):
     return math.sqrt((pos2[0] - pos1[0]) ** 2 + (pos2[1] - pos1[1]) ** 2)
 
+# Algoritma A* 
 def a_star(graph, start, end, intersections):
     open_set = [(0, start)]  # (f_score, node)
     came_from = {node: None for node in graph}
