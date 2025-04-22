@@ -3,10 +3,8 @@ import sys
 import math
 import heapq
 
-# Inisialisasi Pygame
 pygame.init()
 
-# Muat gambar peta
 try:
     map_image = pygame.image.load("map2.jpg")
 except pygame.error as e:
@@ -15,11 +13,9 @@ except pygame.error as e:
 
 map_rect = map_image.get_rect()
 
-# Ukuran layar sesuai gambar peta, tambahkan ruang untuk tombol dan path display
 screen = pygame.display.set_mode((map_rect.width, map_rect.height + 50))
 pygame.display.set_caption("Rute Terbaik dengan A*")
 
-# Koordinat rumah (manual, dalam piksel)
 houses = {
     "Dental": (200, 100),  
     "Bakmi": (210, 750), 
@@ -27,7 +23,6 @@ houses = {
     "Nutrihub": (430, 760), 
 }
 
-# Koordinat persimpangan (manual, dalam piksel)
 intersections = {
     "A": (40, 30),  
     "B": (690, 30),   
@@ -51,7 +46,6 @@ intersections = {
     "V": (430, 780),  
 }
 
-# Graf jalan dengan path cost yang lebih kecil dan sesuai dengan peta
 graph = {
     "A": {"B": 65, "C": 9},
     "B": {"A": 65, "K": 45},
@@ -75,7 +69,6 @@ graph = {
     "V": {"Q": 13, "D": 25},                   
 }
 
-# Mapping rumah ke simpul terdekat atau simpul yang ditentukan
 house_to_intersection = {
     "Dental": "S",    
     "Bakmi": "R",     
@@ -83,11 +76,9 @@ house_to_intersection = {
     "Nutrihub": "V", 
 }
 
-# Fungsi untuk menghitung jarak Euclidean antara dua titik (digunakan sebagai heuristik)
 def calculate_distance(pos1, pos2):
     return math.sqrt((pos2[0] - pos1[0]) ** 2 + (pos2[1] - pos1[1]) ** 2)
 
-# Algoritma A* untuk mencari rute terpendek
 def a_star(graph, start, end, intersections):
     open_set = [(0, start)]  # (f_score, node)
     came_from = {node: None for node in graph}
